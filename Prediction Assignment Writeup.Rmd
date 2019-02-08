@@ -1,0 +1,91 @@
+---
+title: "Prediction Assignment Writeup"
+author: "Gonzalo Canto"
+date: "February 7th 2019"
+output: html_document
+---
+
+#Overview
+
+###The goal of this project is to predict the manner in which they did the exercise. This is the "classe" variable in the training set. I may use any of the other variables to predict with. I should create a report describing how I built my model,how I used cross validation, what I think the expected out of sample error is,and why I made the choices I did. I will also use my prediction model to predict 20 different test cases.
+
+# Download and clean the dataset
+
+###Firstly I loaded the packages that I will need for the project
+```{r}
+library(ggplot2)
+library(caret)
+library(randomForest)
+```
+
+### Then I download the data files from the URL provided with the na.strings argument and then I check the dimension of both Traning and Testing set
+```{r}
+Training <- read.csv("https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv",na.strings=c("NA","#DIV/0!",""))
+Testing <- read.csv("https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv",na.strings=c("NA","#DIV/0!",""))
+dim(Training)
+dim(Testing)
+```
+
+# Clean Data
+
+### I clean the columns with variance near zeroes and I also select all columns starting from column 7 as these are not numeric.
+```{r}
+Training2 <-Training[,colSums(is.na(Training)) == 0]
+Testing2 <-Testing[,colSums(is.na(Testing)) == 0]
+Training3 <-Training2[,c(8:60)]
+Testing3 <-Testing2[,c(8:60)]
+```
+
+#Partition Training Set
+
+###In this section I split our dataset, I am going to build a training set and a test set, 70% for train data, 30% for test data this will be used for cross validation
+```{r}
+set.seed(1050)
+inTrain <- createDataPartition(Training3$classe, p=0.7, list=FALSE)
+TrainingFinal <- Training3[inTrain, ]
+TestingFinal <- Training3[-inTrain, ]
+```
+
+###I check the new dimensions for the final training and test set
+```{r}
+dim(TrainingFinal)
+dim(TestingFinal)
+```
+
+#Data Prediction and Modelling
+
+###I fit my prediction model. I choose Random forest due to its accuracy rate. This way the error should be small estimated by using the 30% testing sample. 
+```{r}
+modfit <- randomForest(classe ~., data=TrainingFinal, method="class")
+```
+
+###Plot to visualise the model that has been built.  
+```{r}
+plot(modfit)
+```
+
+### Now I use cross validation, to evaluate our predicted model.  
+```{r}
+RandomFPrediction <- predict(modfit, TestingFinal, Type="class")
+```
+
+### The confusion matrix will evaluate the performance of the classification model.
+```{r}
+confusionMatrix(RandomFPrediction, TestingFinal$classe)
+```
+
+###The random forest model performed very well  with  99.6% Accuracy.
+###In order to see the model performace more clearly I get the accuracy and the estimated out-of-sample error.
+```{r}
+accuracy <- postResample(RandomFPrediction, TestingFinal$classe)
+error<-1 - as.numeric(confusionMatrix(TestingFinal$classe, RandomFPrediction)$overall[1])
+```
+The accuracy of the model is 99.6% and the estimated out-of-sample error is 0.4%
+
+#20 different test cases
+
+###I use the model with the test data provided in the beginning
+```{r}
+Prediction <- predict(modfit, Testing)
+Prediction
+```
